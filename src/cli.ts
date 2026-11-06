@@ -7,7 +7,6 @@ import ora from "ora";
 import chalk from "chalk";
 
 import { analyzeSource } from "./analyzer/scanner.js";
-import { detectProject } from "./analyzer/detector.js";
 import { calibrateMachine } from "./calibration/calibrator.js";
 import {
   printCalibration,
@@ -25,7 +24,7 @@ const program = new Command();
 program
   .name("cf-bench")
   .description("Benchmark & optimize any app or API for Cloudflare's 10ms CPU Free Tier limit")
-  .version("0.2.0");
+  .version("0.2.1");
 
 // Command: calibrate
 program
@@ -45,19 +44,38 @@ program
 
 // Command: scan
 program
-  .command("scan [pattern]")
-  .description("Scan files for CPU-intensive patterns, synchronous loops, and heavy libraries")
-  .option("--ext <extensions>", "File extensions to scan", ".ts,.js,.mjs,.tsx,.jsx")
-  .action(async (pattern, options) => {
-    const project = await detectProject();
-    const targetPattern = pattern || `${project.apiRoutesDir || "src"}/**/*.{ts,js,mjs,tsx,jsx}`;
+  .command("scan [pathOrPattern]")
+  .description("Scan files, folders, or glob patterns for CPU-intensive patterns and heavy libraries")
+  .action(async (pathOrPattern = ".") => {
+    // Universal resolution: works on single files, specific directories, or globs
+    let targetPattern = pathOrPattern;
 
-    console.log(chalk.dim(`Detected framework: ${chalk.bold.cyan(project.type.toUpperCase())} (${project.name})`));
-    const spinner = ora(`Scanning files matching '${targetPattern}'...`).start();
+    try {
+      const stat = await fs.stat(pathOrPattern).catch(() => null);
+      if (stat && stat.isDirectory()) {
+        targetPattern = path.join(pathOrPattern, "**/*.{ts,js,mjs,cjs,tsx,jsx}").replace(/\\/g, "/");
+      } else if (stat && stat.isFile()) {
+        targetPattern = pathOrPattern.replace(/\\/g, "/");
+      }
+    } catch {
+      // Treat as glob
+    }
+
+    const spinner = ora(`Scanning '${targetPattern}'...`).start();
 
     try {
       const files = await glob(targetPattern, {
-        ignore: ["**/node_modules/**", "**/dist/**", "**/.wrangler/**", "**/.git/**", "**/.astro/**", "**/.next/**"],
+        ignore: [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**",
+          "**/.wrangler/**",
+          "**/.git/**",
+          "**/.astro/**",
+          "**/.next/**",
+          "**/.nuxt/**",
+          "**/.output/**",
+        ],
         nodir: true,
       });
 
@@ -133,7 +151,7 @@ program
 // Command: http (universal black-box HTTP endpoint benchmark)
 program
   .command("http <url>")
-  .description("Benchmark any live endpoint over HTTP (framework-agnostic: Next.js, Astro, Hono, Rust Wasm)")
+  .description("Benchmark any HTTP endpoint (works with any port, framework, or language)")
   .option("-X, --method <method>", "HTTP Method", "GET")
   .option("-i, --iterations <count>", "Number of requests", "50")
   .option("-d, --data <json>", "JSON Request body string")
@@ -149,7 +167,7 @@ program
       }
     }
 
-    const spinner = ora(`Benchmarking endpoint ${options.method} ${url} (${options.iterations} requests)...`).start();
+    const spinner = ora(`Benchmarking ${options.method} ${url} (${options.iterations} requests)...`).start();
 
     try {
       const result = await benchmarkHttpEndpoint({
@@ -174,15 +192,19 @@ program
 
 // Command: ci (Generate markdown PR report for CI/CD)
 program
-  .command("ci")
-  .description("Run full audit and output Markdown comment for GitHub Actions / CI")
+  .command("ci [path]")
+  .description("Run full audit on a path and output Markdown comment for GitHub Actions / CI")
   .option("-o, --output <file>", "Markdown output file", "cf-bench-report.md")
-  .action(async (options) => {
-    const project = await detectProject();
-    const spinner = ora(`Running CI audit on ${project.name}...`).start();
+  .action(async (targetPath = ".", options) => {
+    const spinner = ora(`Running CI audit on '${targetPath}'...`).start();
 
     try {
-      const targetPattern = `${project.apiRoutesDir || "src"}/**/*.{ts,js,mjs,tsx,jsx}`;
+      let targetPattern = targetPath;
+      const stat = await fs.stat(targetPath).catch(() => null);
+      if (stat && stat.isDirectory()) {
+        targetPattern = path.join(targetPath, "**/*.{ts,js,mjs,cjs,tsx,jsx}").replace(/\\/g, "/");
+      }
+
       const files = await glob(targetPattern, {
         ignore: ["**/node_modules/**", "**/dist/**", "**/.wrangler/**", "**/.git/**", "**/.astro/**", "**/.next/**"],
         nodir: true,
@@ -197,7 +219,7 @@ program
         } catch {}
       }
 
-      const md = generateMarkdownReport(project.name, allDiagnostics);
+      const md = generateMarkdownReport(path.basename(path.resolve(targetPath)), allDiagnostics);
       await fs.writeFile(path.resolve(process.cwd(), options.output), md, "utf8");
 
       spinner.succeed(`CI audit complete. Report written to ${options.output}`);

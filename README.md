@@ -10,47 +10,45 @@ Cloudflare Workers Free Tier enforces a strict **10ms CPU time limit per request
 - **I/O Wait time** (`fetch`, database queries, KV/R2) is **free** (the timer pauses).
 - **Active JavaScript CPU execution** (JSON parsing, loops, sorting, cryptography) runs the clock.
 - If your request exceeds 10ms active compute, Cloudflare abruptly terminates it with **Error 1102: Worker exceeded resource limits**.
-- Developers' laptops are often 2x–5x faster than shared edge servers, masking CPU overages until production!
+- Laptops are often 2x–5x faster than shared edge servers, masking CPU overages until production!
 
 `cloudflare-bench` bridges this gap:
 1. **Calibrates** your local hardware speed against Cloudflare Edge servers.
 2. **Statically scans** code for CPU-intensive anti-patterns (regex recompilation, JSON in loops, forbidden crypto).
-3. **Benchmarks live HTTP endpoints** across any framework (Astro, Next.js, Hono, Remix, or Rust/Wasm).
+3. **Benchmarks live HTTP endpoints** across any framework, port, or language.
 4. **Automates CI/CD checks** with markdown PR comments to block PRs that exceed the 10ms budget.
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Quick Start
 
 ```bash
-# Global CLI
-npm install -g cloudflare-bench
-
-# Or as a project devDependency
-npm install -D cloudflare-bench
-```
-
-Or run directly with `npx`:
-```bash
+# Run instantly with npx anywhere
 npx cloudflare-bench scan
+
+# Or install globally
+npm install -g cloudflare-bench
 ```
 
 ---
 
 ## 🛠 Commands & Features
 
-### 1. Calibrate Your Machine
-Run this once to calculate your hardware's speed ratio relative to Cloudflare Edge workers:
-```bash
-cf-bench calibrate
-```
-*Outputs your single-thread calibration score and scale factor (stored in `~/.cf-bench/calibration.json`).*
+### 1. Universal Scanner (`cf-bench scan`)
+Scan any project, directory, or single file. Defaults to `.` (the current folder):
 
-### 2. Universal Static AST Scanner
-Scans your project for code patterns known to exceed the 10ms free-tier limit. Auto-detects frameworks (Astro, Next.js, Hono, Remix, Workers):
 ```bash
+# Scan whatever folder you are currently in
 cf-bench scan
+
+# Scan a specific directory
+cf-bench scan ./src
+cf-bench scan ./api
+
+# Scan a single file
+cf-bench scan ./src/utils/crypto.ts
 ```
+
 **Patterns caught:**
 - `no-inline-regex`: Re-compiling `new RegExp()` inside request handlers or loops.
 - `no-json-in-loop`: Repeated `JSON.parse` / `JSON.stringify` inside loops.
@@ -59,49 +57,45 @@ cf-bench scan
 - `no-heavy-crypto`: Forbidden CPU-hogging crypto libraries (`bcrypt`, `argon2`).
 - `avoid-heavy-date-libs`: Heavy packages like `moment` or `dayjs`.
 
-### 3. Black-Box HTTP Endpoint Benchmark
-Benchmark any live endpoint (local dev server or remote staging). Completely framework and language-agnostic:
-```bash
-# Benchmark an Astro/Next.js/Hono endpoint over HTTP
-cf-bench http http://localhost:8787/api/orders -i 50
+---
 
-# Benchmark a POST request with payload
-cf-bench http http://localhost:8787/api/checkout -X POST -d '{"cartId":"123"}'
-```
-*Features I/O latency subtraction so network ping doesn't distort your CPU budget estimate.*
+### 2. Live HTTP Endpoint Benchmark (`cf-bench http <url>`)
+Benchmark any URL, any port, any framework (Astro, Next.js, Hono, Express, Python, or Rust Wasm):
 
-### 4. Direct In-Process Function Benchmark
-Benchmark an exported handler or function directly:
 ```bash
-cf-bench run ./dist/handler.js --export default --iterations 100
-```
+# Works on any URL / any port:
+cf-bench http http://localhost:3000/api/users
+cf-bench http http://localhost:4321/api/search
+cf-bench http http://localhost:8080/compute
 
-### 5. CI/CD GitHub Action Mode
-Generate an audit report for pull requests in CI:
-```bash
-cf-bench ci --output cf-bench-report.md
+# With custom HTTP method and payload:
+cf-bench http http://localhost:3000/api/data -X POST -d '{"query":"sample"}'
 ```
-*Exits with code 1 if critical free-tier CPU anti-patterns or limit breaches are found.*
+*Automatically subtracts network latency so ping/network roundtrip does not falsely trigger a CPU limit failure.*
 
 ---
 
-## 💻 Programmatic API
+### 3. Hardware Calibration (`cf-bench calibrate`)
+Run this once so the tool knows your computer's speed compared to Cloudflare Workers edge servers:
+```bash
+cf-bench calibrate
+```
+*Outputs your single-thread calibration score and scale factor (saved to `~/.cf-bench/calibration.json`).*
 
-You can also integrate benchmarking directly into your test suites or CI scripts:
+---
 
-```typescript
-import { benchmarkFunction, benchmarkHttpEndpoint, analyzeSource } from "cloudflare-bench";
+### 4. Direct In-Process Function Benchmark (`cf-bench run <file>`)
+Benchmark an exported function without starting a server:
+```bash
+cf-bench run ./src/utils/pricing.js --export calculateDiscount --iterations 100
+```
 
-// 1. Benchmark an HTTP route
-const result = await benchmarkHttpEndpoint({
-  url: "http://localhost:8787/api/orders",
-  iterations: 50,
-});
-console.log(result.metrics.freeTierStatus); // "PASS" | "WARN" | "FAIL"
-console.log(result.metrics.estimatedEdgeP95); // e.g. 5.2ms
+---
 
-// 2. Scan code dynamically
-const diags = analyzeSource(codeString, "src/api/handler.ts");
+### 5. CI/CD GitHub Action Mode (`cf-bench ci`)
+Run full audits in your CI pipeline and output a Markdown summary:
+```bash
+cf-bench ci ./src --output report.md
 ```
 
 ---
