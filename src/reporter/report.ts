@@ -89,3 +89,4 @@ export function printBenchmarkReport(label: string, metrics: BenchmarkMetrics): 
     );
   }
 }
+

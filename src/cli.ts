@@ -1,12 +1,12 @@
 import { Command } from "commander";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { glob } from "glob";
 import ora from "ora";
-import chalk from "chalk";
 
 import { analyzeSource } from "./analyzer/scanner.js";
-import { calibrateMachine, getCalibrationData } from "./calibration/calibrator.js";
+import { calibrateMachine } from "./calibration/calibrator.js";
 import { printCalibration, printDiagnostics, printBenchmarkReport } from "./reporter/report.js";
 import { benchmarkFunction } from "./runner/benchmark.js";
 import { Diagnostic } from "./types.js";
@@ -89,7 +89,9 @@ program
     const spinner = ora(`Loading module from ${resolvedPath}...`).start();
 
     try {
-      const mod = await import(resolvedPath);
+      // Use pathToFileURL to support cross-platform Windows drive paths in ESM dynamic import
+      const moduleUrl = pathToFileURL(resolvedPath).href;
+      const mod = await import(moduleUrl);
       const fn = mod[options.export];
 
       if (typeof fn !== "function") {

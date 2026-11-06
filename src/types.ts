@@ -31,3 +31,4 @@ export interface BenchmarkMetrics {
   estimatedEdgeP95: number;
   freeTierStatus: "PASS" | "WARN" | "FAIL";
 }
+

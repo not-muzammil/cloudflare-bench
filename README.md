@@ -82,3 +82,4 @@ console.log(metrics.estimatedEdgeP95); // e.g. 4.2ms
 ## 📄 License
 
 MIT © [Muzammil](https://github.com/not-muzammil)
+
