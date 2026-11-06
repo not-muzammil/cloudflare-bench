@@ -8,6 +8,7 @@ export interface Diagnostic {
   column: number;
   severity: Severity;
   suggestion?: string;
+  fixable?: boolean;
 }
 
 export interface CalibrationData {
@@ -32,3 +33,22 @@ export interface BenchmarkMetrics {
   freeTierStatus: "PASS" | "WARN" | "FAIL";
 }
 
+export interface HttpBenchmarkOptions {
+  url: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  headers?: Record<string, string>;
+  body?: string;
+  iterations?: number;
+  concurrency?: number;
+  warmup?: number;
+}
+
+export interface HttpBenchmarkResult {
+  url: string;
+  method: string;
+  iterations: number;
+  statusCodes: Record<number, number>;
+  metrics: BenchmarkMetrics;
+  estimatedServerCpuP95: number;
+  networkLatencyP50: number;
+}

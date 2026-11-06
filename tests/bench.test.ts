@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { analyzeSource } from "../src/analyzer/scanner.js";
 import { benchmarkFunction } from "../src/runner/benchmark.js";
+import { detectProject } from "../src/analyzer/detector.js";
 
 describe("scanner", () => {
   it("detects forbidden crypto libraries", () => {
@@ -54,3 +55,10 @@ describe("runner", () => {
   });
 });
 
+describe("detector", () => {
+  it("detects project structure", async () => {
+    const project = await detectProject();
+    expect(project).toBeDefined();
+    expect(project.name).toBe("cloudflare-bench");
+  });
+});

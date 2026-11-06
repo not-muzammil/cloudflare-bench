@@ -1,28 +1,39 @@
 {
   "name": "cloudflare-bench",
-  "version": "0.1.0",
-  "description": "A CLI and benchmarking harness to test and optimize apps for Cloudflare's 10ms CPU Free Tier limit.",
+  "version": "0.2.0",
+  "description": "Benchmark, analyze, and optimize any app, framework, or API for Cloudflare's 10ms CPU Free Tier limit.",
   "type": "module",
   "bin": {
     "cf-bench": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "cloudflare",
     "workers",
+    "cloudflare-workers",
     "cpu",
     "benchmark",
     "performance",
     "free-tier",
-    "optimization"
+    "optimization",
+    "ast-scanner",
+    "edge",
+    "astro",
+    "nextjs",
+    "hono"
   ],
   "author": "Muzammil",
   "license": "MIT",
@@ -45,4 +56,3 @@
     "wrangler": "^3.111.0"
   }
 }
-

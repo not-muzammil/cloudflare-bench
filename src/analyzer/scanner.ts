@@ -46,6 +46,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
             column: loc.column,
             message: "Constructing 'new RegExp()' in request/function scope consumes CPU re-compiling the regex pattern.",
             suggestion: "Hoist the RegExp literal or instance to module/top-level scope so it is compiled once.",
+            fixable: true,
           });
         }
       }
@@ -70,6 +71,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
             column: loc.column,
             message: `JSON.${callee.property.name}() invoked inside a loop can easily exceed Cloudflare's 10ms CPU limit.`,
             suggestion: "Parse/serialize outside the loop or stream the JSON payload.",
+            fixable: false,
           });
         }
       }
@@ -90,6 +92,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
             column: loc.column,
             message: "In-memory Array.prototype.sort() in request handlers can spike isolate CPU time on large datasets.",
             suggestion: "Consider sorting at query-time (SQL ORDER BY in DB / D1) or caching the pre-sorted list.",
+            fixable: false,
           });
         }
       }
@@ -110,6 +113,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
             column: loc.column,
             message: `Constructing Intl.${callee.property.name} instances on every request causes repetitive engine initialization overhead.`,
             suggestion: "Hoist your Intl formatter instance to the module scope.",
+            fixable: true,
           });
         }
       }
@@ -128,6 +132,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
           column: loc.column,
           message: `Importing '${source}' will crash Cloudflare Free Tier (bcrypt/argon2 typically require >50ms-100ms CPU).`,
           suggestion: "Use Web Crypto API (crypto.subtle) or @noble/hashes (PBKDF2) with tuned edge iteration counts.",
+          fixable: false,
         });
       }
 
@@ -141,6 +146,7 @@ export function analyzeSource(code: string, filePath: string): Diagnostic[] {
           column: loc.column,
           message: `'${source}' increases bundle parse time.`,
           suggestion: "Use native Date or Intl APIs on Cloudflare Workers.",
+          fixable: false,
         });
       }
     },
